@@ -73,15 +73,21 @@ CREATE TABLE historical_figures (
     name               VARCHAR(50) NOT NULL,
     name_hanja         VARCHAR(50),
     generation_se      INT CHECK (generation_se > 0),
+    category           VARCHAR(12) NOT NULL DEFAULT 'historical'
+                       CHECK (category IN ('historical', 'independence', 'collaborator')),
     title_achievement  TEXT NOT NULL,       -- 주요 업적
     period             VARCHAR(50),         -- 시대 표기 (예: 조선 초기)
     birth_year         SMALLINT,            -- 정렬·필터용 (음수 = 기원전)
     death_year         SMALLINT,
+    honor              VARCHAR(50),         -- 서훈 (예: 건국훈장 대한민국장)
+    basis              TEXT,                -- 분류 근거
     image_url          TEXT,
     verified           BOOLEAN NOT NULL DEFAULT false,
     source             TEXT,
     FOREIGN KEY (clan_id, branch_id)
         REFERENCES branches (clan_id, id) ON DELETE SET NULL (branch_id),
+    -- 친일 분류는 공식 근거 없이는 저장 불가
+    CHECK (category <> 'collaborator' OR basis IS NOT NULL),
     CHECK (death_year IS NULL OR birth_year IS NULL OR death_year >= birth_year)
 );
 
