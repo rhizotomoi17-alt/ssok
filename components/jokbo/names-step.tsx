@@ -1,5 +1,6 @@
 'use client'
 
+import { hasUnconverted, onlyHanja } from '@/lib/jokbo/hanja'
 import { useJokbo, type PersonForm } from '@/lib/jokbo/store'
 import { cn } from '@/lib/utils'
 import { GhostButton, PrimaryButton, TextField, Toggle, serif } from './ui'
@@ -9,7 +10,6 @@ type Who = 'self' | 'father' | 'grandfather'
 const LABEL: Record<Who, string> = { self: '본인', father: '아버지', grandfather: '할아버지' }
 
 const onlyHangul = (v: string) => v.replace(/[^가-힣ㄱ-ㅎㅏ-ㅣ]/g, '').slice(0, 4)
-const onlyHanja = (v: string) => v.replace(/[^㐀-䶿一-鿿豈-﫿]/g, '').slice(0, 4)
 
 function PersonFields({ who }: { who: Who }) {
   const person = useJokbo((s) => s[who])
@@ -17,7 +17,14 @@ function PersonFields({ who }: { who: Who }) {
   const surname = useJokbo((s) => s.surname)
   const set = (patch: Partial<PersonForm>) => setPerson(who, patch)
   const optional = who !== 'self'
-  const hanjaMismatch = person.hanja.length > 0 && person.hanja.length !== person.hangul.length
+  const hanja = onlyHanja(person.hanja)
+  const unconverted = hasUnconverted(person.hanja)
+  const hanjaMismatch = !unconverted && hanja.length > 0 && hanja.length !== person.hangul.length
+  const hanjaHint = unconverted
+    ? '한글을 입력한 뒤 [한자] 키로 한 글자씩 변환하세요. 변환하지 않은 글자는 칸을 벗어나면 지워집니다.'
+    : hanjaMismatch
+      ? '한글 이름과 글자 수가 같아야 합니다.'
+      : '한글로 쓰고 [한자] 키로 변환하세요. 한자가 있으면 동음이의 항렬을 구분해 정확도가 크게 오릅니다.'
 
   return (
     <fieldset className="space-y-3 rounded-2xl border border-[#e3d8c4] bg-white/50 p-4">
@@ -38,9 +45,11 @@ function PersonFields({ who }: { who: Who }) {
           placeholder={person.unknownHanja ? '한자 없이 한글로만 추정합니다' : '예: 相熙'}
           value={person.unknownHanja ? '' : person.hanja}
           disabled={person.unknownHanja}
-          onChange={(e) => set({ hanja: onlyHanja(e.target.value) })}
+          // 한자 키 변환은 한글을 먼저 입력해야 하므로 입력 중에는 거르지 않는다
+          onChange={(e) => set({ hanja: e.target.value.slice(0, 8) })}
+          onBlur={() => set({ hanja: onlyHanja(person.hanja).slice(0, 4) })}
           className={cn(serif)}
-          hint={hanjaMismatch ? '한글 이름과 글자 수가 같아야 합니다.' : '한자가 있으면 동음이의 항렬을 구분할 수 있어 정확도가 크게 오릅니다.'}
+          hint={hanjaHint}
         />
       )}
       <div className="flex flex-wrap gap-2">
@@ -62,7 +71,10 @@ function PersonFields({ who }: { who: Who }) {
 export function NamesStep() {
   const { self, father, grandfather, setStep } = useJokbo()
   const valid = self.hangul.length > 0
-    && [self, father, grandfather].every((p) => !p.hanja || p.unknownHanja || p.hanja.length === p.hangul.length)
+    && [self, father, grandfather].every((p) => {
+      const h = onlyHanja(p.hanja)
+      return !h || p.unknownHanja || p.nativeKorean || h.length === p.hangul.length
+    })
 
   return (
     <div className="space-y-5">

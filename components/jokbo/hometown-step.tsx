@@ -2,6 +2,7 @@
 
 import { Loader2, Lock } from 'lucide-react'
 import { useState } from 'react'
+import { onlyHanja } from '@/lib/jokbo/hanja'
 import { useJokbo, type PersonForm } from '@/lib/jokbo/store'
 import type { MatchInput, MatchResult, PersonInput } from '@/lib/jokbo/types'
 import { cn } from '@/lib/utils'
@@ -14,7 +15,7 @@ function toPerson(p: PersonForm): PersonInput | undefined {
   if (!hangul) return undefined
   return {
     hangul,
-    hanja: p.unknownHanja || p.nativeKorean || !p.hanja ? undefined : p.hanja,
+    hanja: p.unknownHanja || p.nativeKorean ? undefined : onlyHanja(p.hanja) || undefined,
     nativeKorean: p.nativeKorean || undefined,
   }
 }

@@ -113,3 +113,19 @@ test('점수 0 후보는 목록에서 제외', () => {
   const r = matchGenealogy(ds, { surname: '이', self: { hangul: '민섭', hanja: '敏燮' } })
   assert.ok(r.candidates.slice(1).every((c) => c.confidence > 0))
 })
+
+test('모든 본관은 본관을 선택하면 인물이 3명 이상 보인다', () => {
+  for (const clan of ds.clans) {
+    const r = matchGenealogy(ds, { surname: clan.surnameHangul, clanId: clan.id, self: { hangul: '가나' } })
+    assert.ok(r.figures.length >= 3, `${clan.bonGwanHangul} ${clan.surnameHangul}씨: ${r.figures.length}명`)
+  }
+})
+
+test('인물 id 중복 없음, 친일 분류는 모두 근거 있음', () => {
+  const ids = ds.figures.map((f) => f.id)
+  assert.equal(new Set(ids).size, ids.length)
+  for (const f of ds.figures) {
+    if (f.category === 'collaborator') assert.ok(f.basis, f.name)
+    assert.ok(ds.clans.some((c) => c.id === f.clanId), f.name)
+  }
+})
